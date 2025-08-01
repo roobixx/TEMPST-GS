@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CubeSat Ground Station - WebSerial Interface</title>
+    <title>TEMPEST - WebSerial Interface</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         :root {
@@ -524,7 +524,7 @@
         <!-- Header -->
         <div class="header">
             <div class="header-title">
-                <span>🛰️</span> CubeSat Ground Station
+                <span>🛰️</span> TEMPEST Ground Station
             </div>
             <div class="header-status">
                 <div class="connection-status">
@@ -551,9 +551,6 @@
                 <button class="btn btn-secondary" id="resetBtn" onclick="softReset()" disabled style="width: 100%;">
                     Soft Reset
                 </button>
-                <div class="help-text" style="margin-top: 10px;">
-                    ⚠️ Note: The Pico appears as a single COM port. Both console commands and data will use the same port.
-                </div>
             </div>
 
             <!-- Radio Configuration -->
@@ -591,7 +588,7 @@
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: 4px;">
                         <label style="font-size: 12px; color: var(--accent-primary);">🛰️ Satellite Address:</label>
                         <input type="number" class="settings-input" id="satelliteAddress" 
-                               min="0" max="255" value="1" style="padding: 8px;"
+                               min="0" max="255" value="255" style="padding: 8px;"
                                placeholder="0-255 (Destination satellite node)">
                     </div>
                     <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">
@@ -628,7 +625,7 @@
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center;">
                         <label style="font-size: 12px; color: var(--text-secondary);">Ground Node:</label>
                         <input type="number" class="settings-input" id="downlinkNode" 
-                               min="0" max="255" value="0" style="padding: 8px;"
+                               min="0" max="255" value="255" style="padding: 8px;"
                                placeholder="0-255 (Ground station node)">
                     </div>
                 </div>
