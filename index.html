@@ -551,9 +551,6 @@
                 <button class="btn btn-secondary" id="resetBtn" onclick="softReset()" disabled style="width: 100%;">
                     Soft Reset
                 </button>
-                <div class="help-text" style="margin-top: 10px;">
-                    ⚠️ Note: The Pico appears as a single COM port. Both console commands and data will use the same port.
-                </div>
             </div>
 
             <!-- Radio Configuration -->
@@ -565,7 +562,7 @@
                 <!-- Uplink Radio Config -->
                 <div style="margin-bottom: 15px;">
                     <label style="font-size: 14px; color: var(--text-secondary); display: block; margin-bottom: 8px;">
-                        Uplink Radio (Ground → Satellite)
+                        📡 Uplink Radio (Ground → Satellite)
                     </label>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
                         <select class="settings-input" id="uplinkRadio" style="padding: 8px;">
@@ -581,25 +578,28 @@
                     <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px;">
                         <label style="font-size: 12px; color: var(--text-secondary);">Freq:</label>
                         <input type="number" class="settings-input" id="uplinkFreq" 
-                               min="902" max="928" step="0.1" value="915.0" style="padding: 8px;"
-                               onchange="validateFrequency('uplink')">
+                            min="902" max="928" step="0.1" value="915.0" style="padding: 8px;"
+                            onchange="validateFrequency('uplink')">
                         <span style="font-size: 12px; color: var(--text-secondary);">MHz</span>
                     </div>
                     <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;" id="uplinkFreqRange">
                         Valid range: 902.0 - 928.0 MHz
                     </div>
-                    <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center;">
-                        <label style="font-size: 12px; color: var(--text-secondary);">Channel:</label>
-                        <input type="number" class="settings-input" id="uplinkChannel" 
-                               min="0" max="255" value="255" style="padding: 8px;"
-                               placeholder="0-255 (255=default)">
+                    <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: 4px;">
+                        <label style="font-size: 12px; color: var(--accent-primary);">🛰️ Satellite Address:</label>
+                        <input type="number" class="settings-input" id="satelliteAddress" 
+                            min="0" max="255" value="1" style="padding: 8px;"
+                            placeholder="0-255 (Destination satellite node)">
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">
+                        Node address of the satellite to send commands to
                     </div>
                 </div>
 
                 <!-- Downlink Radio Config -->
                 <div style="margin-bottom: 15px;">
                     <label style="font-size: 14px; color: var(--text-secondary); display: block; margin-bottom: 8px;">
-                        Downlink Radio (Satellite → Ground)
+                        📡 Downlink Radio (Satellite → Ground)
                     </label>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
                         <select class="settings-input" id="downlinkRadio" style="padding: 8px;">
@@ -615,18 +615,18 @@
                     <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px;">
                         <label style="font-size: 12px; color: var(--text-secondary);">Freq:</label>
                         <input type="number" class="settings-input" id="downlinkFreq" 
-                               min="902" max="928" step="0.1" value="915.0" style="padding: 8px;"
-                               onchange="validateFrequency('downlink')">
+                            min="902" max="928" step="0.1" value="915.0" style="padding: 8px;"
+                            onchange="validateFrequency('downlink')">
                         <span style="font-size: 12px; color: var(--text-secondary);">MHz</span>
                     </div>
                     <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;" id="downlinkFreqRange">
                         Valid range: 902.0 - 928.0 MHz
                     </div>
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center;">
-                        <label style="font-size: 12px; color: var(--text-secondary);">Channel:</label>
-                        <input type="number" class="settings-input" id="downlinkChannel" 
-                               min="0" max="255" value="255" style="padding: 8px;"
-                               placeholder="0-255 (255=default)">
+                        <label style="font-size: 12px; color: var(--text-secondary);">Ground Node:</label>
+                        <input type="number" class="settings-input" id="downlinkNode" 
+                            min="0" max="255" value="0" style="padding: 8px;"
+                            placeholder="0-255 (Ground station node)">
                     </div>
                 </div>
 
@@ -1298,6 +1298,106 @@
                 // Get radio configurations
                 const uplinkRadio = document.getElementById('uplinkRadio').value;
                 const uplinkFreq = document.getElementById('uplinkFreq').value;
+                const satelliteAddress = document.getElementById('satelliteAddress').value;
+                const uplinkBand = document.getElementById('uplinkBand').value;
+                
+                const downlinkRadio = document.getElementById('downlinkRadio').value;
+                const downlinkFreq = document.getElementById('downlinkFreq').value;
+                const downlinkNode = document.getElementById('downlinkNode').value;
+                const downlinkBand = document.getElementById('downlinkBand').value;
+
+                logToTerminal('Configuring radios...', 'info');
+                
+                // Build uplink command with satellite destination address
+                let uplinkCmd = `set_uplink_radio ${uplinkRadio} ${uplinkFreq}`;
+                if (satelliteAddress !== '255') {
+                    uplinkCmd += ` ${satelliteAddress}`;
+                }
+                
+                // Build downlink command with ground node address
+                let downlinkCmd = `set_downlink_radio ${downlinkRadio} ${downlinkFreq}`;
+                if (downlinkNode !== '255') {
+                    downlinkCmd += ` ${downlinkNode}`;
+                }
+
+                // Send uplink configuration
+                logToTerminal(`Uplink: ${uplinkRadio.toUpperCase()} @ ${uplinkFreq} MHz (${ISM_BANDS[uplinkBand].name}), Satellite Node ${satelliteAddress}`, 'info');
+                await sendCommand(uplinkCmd);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Send downlink configuration
+                logToTerminal(`Downlink: ${downlinkRadio.toUpperCase()} @ ${downlinkFreq} MHz (${ISM_BANDS[downlinkBand].name}), Ground Node ${downlinkNode}`, 'info');
+                await sendCommand(downlinkCmd);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                logToTerminal('Radio configuration complete', 'response');
+                
+                // Update LED config based on selected radios
+                updateLEDConfig(uplinkRadio, downlinkRadio);
+                
+            } catch (error) {
+                logToTerminal(`Radio config error: ${error.message}`, 'error');
+            }
+        }
+
+        // Update the parseRadioConfigFromBuffer function to handle the new structure
+        function parseRadioConfigFromBuffer(buffer) {
+            // Parse configuration from collected buffer
+            for (let line of buffer) {
+                if (line.startsWith('Uplink:')) {
+                    // Parse: "Uplink: RFM95 @ 915.0 MHz, Node 1" (satellite address)
+                    const match = line.match(/Uplink: (\w+) @ ([\d.]+) MHz, (?:Channel|Node) (\d+)/);
+                    if (match) {
+                        const [, type, freq, node] = match;
+                        
+                        // Update uplink UI
+                        document.getElementById('uplinkRadio').value = type.toLowerCase();
+                        document.getElementById('uplinkFreq').value = freq;
+                        document.getElementById('satelliteAddress').value = node;
+                        
+                        // Update band selection based on frequency
+                        const bandValue = freq < 450 ? '433' : freq < 880 ? '868' : '915';
+                        document.getElementById('uplinkBand').value = bandValue;
+                        updateFrequencyRange('uplink');
+                        
+                        logToTerminal('UI updated with uplink configuration', 'info');
+                    }
+                } else if (line.startsWith('Downlink:')) {
+                    // Parse: "Downlink: RFM69 @ 915.0 MHz, Node 0" (ground node)
+                    const match = line.match(/Downlink: (\w+) @ ([\d.]+) MHz, (?:Channel|Node) (\d+)/);
+                    if (match) {
+                        const [, type, freq, node] = match;
+                        
+                        // Update downlink UI
+                        document.getElementById('downlinkRadio').value = type.toLowerCase();
+                        document.getElementById('downlinkFreq').value = freq;
+                        document.getElementById('downlinkNode').value = node;
+                        
+                        // Update band selection based on frequency
+                        const bandValue = freq < 450 ? '433' : freq < 880 ? '868' : '915';
+                        document.getElementById('downlinkBand').value = bandValue;
+                        updateFrequencyRange('downlink');
+                        
+                        logToTerminal('UI updated with downlink configuration', 'info');
+                    }
+                }
+            }
+        }
+            if (!writer) {
+                logToTerminal('Not connected to Ground Station', 'error');
+                return;
+            }
+
+            // Validate frequencies
+            if (!validateFrequency('uplink') || !validateFrequency('downlink')) {
+                logToTerminal('Invalid frequency settings. Please check the frequency ranges.', 'error');
+                return;
+            }
+
+            try {
+                // Get radio configurations
+                const uplinkRadio = document.getElementById('uplinkRadio').value;
+                const uplinkFreq = document.getElementById('uplinkFreq').value;
                 const uplinkChannel = document.getElementById('uplinkChannel').value;
                 const uplinkBand = document.getElementById('uplinkBand').value;
                 
@@ -1638,8 +1738,8 @@
             };
             
             // Add tooltips for channel info
-            document.getElementById('uplinkChannel').title = 'Channel 0-255. Use 255 for default channel.';
-            document.getElementById('downlinkChannel').title = 'Channel 0-255. Use 255 for default channel.';
+        document.getElementById('satelliteAddress').title = 'The node address of the satellite to communicate with (0-255). Default is 1.';
+        document.getElementById('downlinkNode').title = 'Node address for the ground station (0-255). Default is 0.';
         });
 
         // Handle page close
