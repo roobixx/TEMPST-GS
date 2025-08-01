@@ -1,0 +1,1786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CubeSat Ground Station - WebSerial Interface</title>
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #1a1f3a;
+            --bg-tertiary: #252b48;
+            --text-primary: #e4e4e7;
+            --text-secondary: #a1a1aa;
+            --accent-primary: #3b82f6;
+            --accent-secondary: #10b981;
+            --accent-danger: #ef4444;
+            --accent-warning: #f59e0b;
+            --border-color: #374151;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-shrink: 0;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--accent-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-status {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .left-column,
+        .right-column {
+            width: 25%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .middle-column {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Main Container */
+        .container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            flex: 1;
+            overflow: hidden;
+            height: calc(100vh - 60px);
+            justify-content: center; /* Center horizontally */
+        }
+
+        /* Panel Styles */
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-header {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--accent-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Terminal Panel specific */
+        .terminal-panel {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            flex: 0 0 380px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-primary);
+        }
+
+        .control-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .control-panel::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        .control-panel::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        /* Connection Status */
+        .connection-status {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent-danger);
+            transition: all 0.3s ease;
+        }
+
+        .status-indicator.connected {
+            background: var(--accent-secondary);
+            box-shadow: 0 0 10px var(--accent-secondary);
+        }
+
+        /* Port Info */
+        .port-info {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: #374151;
+        }
+
+        .btn-danger {
+            background: var(--accent-danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Command Section */
+        .command-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .command-input {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .command-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .command-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .command-preset {
+            padding: 8px;
+            font-size: 12px;
+        }
+
+        /* Data Display Panel */
+        .data-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow: hidden;
+        }
+
+        /* Terminal Output */
+        .terminal {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-primary);
+        }
+
+        .terminal::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .terminal::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        .terminal::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .terminal-line {
+            margin-bottom: 4px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .terminal-line.command {
+            color: var(--accent-primary);
+        }
+
+        .terminal-line.response {
+            color: var(--accent-secondary);
+        }
+
+        .terminal-line.error {
+            color: var(--accent-danger);
+        }
+
+        .terminal-line.warning {
+            color: var(--accent-warning);
+        }
+
+        .terminal-line.info {
+            color: var(--text-secondary);
+        }
+
+        /* Telemetry Panel */
+        .telemetry-panel {
+            height: 200px;
+            flex-shrink: 0;
+        }
+
+        /* Telemetry Grid */
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .telemetry-item {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .telemetry-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .telemetry-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--accent-primary);
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Settings Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--accent-primary);
+        }
+
+        .settings-group {
+            margin-bottom: 20px;
+        }
+
+        .settings-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .settings-input {
+            width: 100%;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        /* LED Indicators */
+        .led-indicators {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .led-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .led {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #374151;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .led.active {
+            background: var(--accent-secondary);
+            box-shadow: 0 0 15px var(--accent-secondary);
+        }
+
+        .led.active::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 50%;
+            background: radial-gradient(circle, transparent, var(--accent-secondary));
+            opacity: 0.6;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.6; }
+            50% { transform: scale(1.2); opacity: 0.3; }
+        }
+
+        /* Help Section */
+        .help-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 10px;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            line-height: 1.5;
+        }
+    
+       /* Orientation Panel */
+        .orientation-panel {
+            height: 400px;
+        }
+
+        .orientation-canvas {
+            width: 100%;
+            height: 320px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            position: relative;
+        }
+
+        .orientation-values {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .orientation-value {
+            text-align: center;
+            padding: 8px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        .orientation-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .orientation-data {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--accent-primary);
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Responsive - Disabled for fixed layout */
+        @media (max-width: 1600px) {
+            body {
+                overflow: auto;
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <div id="mainInterface">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-title">
+                <span>🛰️</span> CubeSat Ground Station
+            </div>
+            <div class="header-status">
+                <div class="connection-status">
+                    <div class="status-indicator" id="statusIndicator"></div>
+                    <span id="connectionStatus">Disconnected</span>
+                </div>
+                <div class="port-info" id="portInfo"></div>
+            </div>
+        </div>
+
+        <div class="container">
+        <!-- Left Column: Connection & Configuration -->
+        <div class="left-column">
+            <!-- Connection Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>📡</span> Connection Control
+                </div>
+                <div class="connection-status" style="margin-bottom: 10px;">
+                    <button class="btn btn-primary" id="connectBtn" onclick="toggleConnection()">
+                        Connect to Ground Station
+                    </button>
+                </div>
+                <button class="btn btn-secondary" id="resetBtn" onclick="softReset()" disabled style="width: 100%;">
+                    Soft Reset
+                </button>
+                <div class="help-text" style="margin-top: 10px;">
+                    ⚠️ Note: The Pico appears as a single COM port. Both console commands and data will use the same port.
+                </div>
+            </div>
+
+            <!-- Radio Configuration -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>📻</span> Radio Configuration
+                </div>
+                
+                <!-- Uplink Radio Config -->
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size: 14px; color: var(--text-secondary); display: block; margin-bottom: 8px;">
+                        Uplink Radio (Ground → Satellite)
+                    </label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                        <select class="settings-input" id="uplinkRadio" style="padding: 8px;">
+                            <option value="rfm95">RFM95 (LoRa)</option>
+                            <option value="rfm69">RFM69 (FSK)</option>
+                        </select>
+                        <select class="settings-input" id="uplinkBand" style="padding: 8px;" onchange="updateFrequencyRange('uplink')">
+                            <option value="433">433 MHz Band</option>
+                            <option value="868">868 MHz Band</option>
+                            <option value="915" selected>915 MHz Band (US)</option>
+                        </select>
+                    </div>
+                    <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px;">
+                        <label style="font-size: 12px; color: var(--text-secondary);">Freq:</label>
+                        <input type="number" class="settings-input" id="uplinkFreq" 
+                               min="902" max="928" step="0.1" value="915.0" style="padding: 8px;"
+                               onchange="validateFrequency('uplink')">
+                        <span style="font-size: 12px; color: var(--text-secondary);">MHz</span>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;" id="uplinkFreqRange">
+                        Valid range: 902.0 - 928.0 MHz
+                    </div>
+                    <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center;">
+                        <label style="font-size: 12px; color: var(--text-secondary);">Channel:</label>
+                        <input type="number" class="settings-input" id="uplinkChannel" 
+                               min="0" max="255" value="255" style="padding: 8px;"
+                               placeholder="0-255 (255=default)">
+                    </div>
+                </div>
+
+                <!-- Downlink Radio Config -->
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size: 14px; color: var(--text-secondary); display: block; margin-bottom: 8px;">
+                        Downlink Radio (Satellite → Ground)
+                    </label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                        <select class="settings-input" id="downlinkRadio" style="padding: 8px;">
+                            <option value="rfm95">RFM95 (LoRa)</option>
+                            <option value="rfm69">RFM69 (FSK)</option>
+                        </select>
+                        <select class="settings-input" id="downlinkBand" style="padding: 8px;" onchange="updateFrequencyRange('downlink')">
+                            <option value="433">433 MHz Band</option>
+                            <option value="868">868 MHz Band</option>
+                            <option value="915" selected>915 MHz Band (US)</option>
+                        </select>
+                    </div>
+                    <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px;">
+                        <label style="font-size: 12px; color: var(--text-secondary);">Freq:</label>
+                        <input type="number" class="settings-input" id="downlinkFreq" 
+                               min="902" max="928" step="0.1" value="915.0" style="padding: 8px;"
+                               onchange="validateFrequency('downlink')">
+                        <span style="font-size: 12px; color: var(--text-secondary);">MHz</span>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;" id="downlinkFreqRange">
+                        Valid range: 902.0 - 928.0 MHz
+                    </div>
+                    <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center;">
+                        <label style="font-size: 12px; color: var(--text-secondary);">Channel:</label>
+                        <input type="number" class="settings-input" id="downlinkChannel" 
+                               min="0" max="255" value="255" style="padding: 8px;"
+                               placeholder="0-255 (255=default)">
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="configureRadios()" style="width: 100%; margin-bottom: 8px;">
+                    Apply Radio Configuration
+                </button>
+                <button class="btn btn-secondary" onclick="queryRadioConfig()" style="width: 100%;">
+                    Query Current Config
+                </button>
+                
+                <div class="led-indicators">
+                    <div class="led-item">
+                        <div class="led" id="rfm95TxLed"></div>
+                        <span>RFM95 TX</span>
+                    </div>
+                    <div class="led-item">
+                        <div class="led" id="rfm95RxLed"></div>
+                        <span>RFM95 RX</span>
+                    </div>
+                    <div class="led-item">
+                        <div class="led" id="rfm69TxLed"></div>
+                        <span>RFM69 TX</span>
+                    </div>
+                    <div class="led-item">
+                        <div class="led" id="rfm69RxLed"></div>
+                        <span>RFM69 RX</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Button -->
+            <button class="btn btn-secondary" onclick="openSettings()">
+                ⚙️ Settings
+            </button>
+        </div>
+
+        <!-- Middle Column: Terminal & Data -->
+        <div class="middle-column">
+            <!-- Terminal Output -->
+            <div class="panel terminal-panel">
+                <div class="panel-header">
+                    <span>💻</span> Terminal Output
+                    <button class="btn btn-secondary" onclick="clearTerminal()" style="margin-left: auto; padding: 6px 12px; font-size: 12px;">
+                        Clear
+                    </button>
+                </div>
+                <div class="terminal" id="terminal"></div>
+            </div>
+
+            <!-- Telemetry Display -->
+            <div class="panel telemetry-panel">
+                <div class="panel-header">
+                    <span>📊</span> Live Telemetry
+                </div>
+                <div class="telemetry-grid" id="telemetryGrid">
+                    <div class="telemetry-item">
+                        <div class="telemetry-label">Battery Voltage</div>
+                        <div class="telemetry-value" id="batteryVoltage">--.-V</div>
+                    </div>
+                    <div class="telemetry-item">
+                        <div class="telemetry-label">Temperature</div>
+                        <div class="telemetry-value" id="temperature">--.-°C</div>
+                    </div>
+                    <div class="telemetry-item">
+                        <div class="telemetry-label">Disk Usage</div>
+                        <div class="telemetry-value" id="diskUsage">--%</div>
+                    </div>
+                    <div class="telemetry-item">
+                        <div class="telemetry-label">RAM Usage</div>
+                        <div class="telemetry-value" id="ramUsage">--%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Command Sender -->
+        <div class="right-column">
+            <!-- Command Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>⌨️</span> Command Center
+                </div>
+                <div class="command-section">
+                    <input type="text" class="command-input" id="commandInput" 
+                           placeholder="Enter command..." disabled
+                           onkeydown="if(event.key === 'Enter') sendCommand()">
+                    <button class="btn btn-primary" onclick="sendCommand()" disabled id="sendBtn">
+                        Send Command
+                    </button>
+                    
+                    <div style="margin-top: 15px;">
+                        <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 8px;">
+                            Quick Commands:
+                        </label>
+                        <div class="command-buttons">
+                            <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('GET_SOLAR')">Solar</button>
+                            <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('EPS_STATUS')">EPS</button>
+                            <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('GET_GYRO')">Gyro</button>
+                            <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('GET_ORIENTATION')">Orient</button>
+                            <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('GET_BME')">BME</button>
+                            <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('GET_ACCEL')">Accel</button>
+                            <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('GET_MAG')">Mag</button>
+                            <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('GET_TEMP')">Temp</button>
+                            <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('OBC_DISK')">Disk</button>
+                            <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('OBC_RAM')">RAM</button>
+                            <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('OBC_PROCESSES')">Procs</button>
+                            <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('GET_HOSTNAME')">Host</button>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-secondary" onclick="showHelp()" style="margin-top: 10px; width: 100%;">
+                        Show All Commands
+                    </button>
+                </div>
+            </div>
+            <!-- Orientation Panel -->
+            <div class="panel orientation-panel">
+                <div class="panel-header">
+                    <span>🛸</span> Satellite Orientation
+                    <button class="btn btn-secondary" onclick="sendPresetCommand('GET_ORIENTATION')" style="margin-left: auto; padding: 6px 12px; font-size: 12px;">
+                        Update
+                    </button>
+                </div>
+                <div class="orientation-canvas" id="orientationCanvas"></div>
+                <div class="orientation-values">
+                    <div class="orientation-value">
+                        <div class="orientation-label">Roll (X)</div>
+                        <div class="orientation-data" id="rollValue">0.0°</div>
+                    </div>
+                    <div class="orientation-value">
+                        <div class="orientation-label">Pitch (Y)</div>
+                        <div class="orientation-data" id="pitchValue">0.0°</div>
+                    </div>
+                    <div class="orientation-value">
+                        <div class="orientation-label">Yaw (Z)</div>
+                        <div class="orientation-data" id="yawValue">0.0°</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">Settings</div>
+            <div class="settings-group">
+                <label class="settings-label">Baud Rate</label>
+                <input type="number" class="settings-input" id="baudRate" value="115200">
+            </div>
+            <div class="settings-group">
+                <label class="settings-label">Data Bits</label>
+                <input type="number" class="settings-input" id="dataBits" value="8">
+            </div>
+            <div class="settings-group">
+                <label class="settings-label">Stop Bits</label>
+                <input type="number" class="settings-input" id="stopBits" value="1">
+            </div>
+            <div class="settings-group">
+                <label class="settings-label">Parity</label>
+                <select class="settings-input" id="parity">
+                    <option value="none">None</option>
+                    <option value="even">Even</option>
+                    <option value="odd">Odd</option>
+                </select>
+            </div>
+            <div class="settings-group">
+                <label class="settings-label">Flow Control</label>
+                <select class="settings-input" id="flowControl">
+                    <option value="none">None</option>
+                    <option value="hardware">Hardware</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="closeSettings()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let port = null;
+        let reader = null;
+        let writer = null;
+        let isConnected = false;
+        let readLoop = null;
+        let pollBuffer = new Uint8Array();
+        let obclDataArray = [];
+        let dataBuffer = new Uint8Array();
+
+        // Three.js Orientation Visualization (ADD THESE)
+        let orientationScene, orientationCamera, orientationRenderer;
+        let satelliteModel;
+        let orientationAnimationId;
+
+        // Helper functions
+        function logToTerminal(message, type = 'info') {
+            const terminal = document.getElementById('terminal');
+            const line = document.createElement('div');
+            line.className = `terminal-line ${type}`;
+            const timestamp = new Date().toLocaleTimeString('en-US', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                fractionalSecondDigits: 3 
+            });
+            line.textContent = `[${timestamp}] ${message}`;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            const indicator = document.getElementById('statusIndicator');
+            const status = document.getElementById('connectionStatus');
+            const connectBtn = document.getElementById('connectBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const sendBtn = document.getElementById('sendBtn');
+            const commandInput = document.getElementById('commandInput');
+
+            if (connected) {
+                indicator.classList.add('connected');
+                status.textContent = 'Connected';
+                connectBtn.textContent = 'Disconnect';
+                resetBtn.disabled = false;
+                sendBtn.disabled = false;
+                commandInput.disabled = false;
+            } else {
+                indicator.classList.remove('connected');
+                status.textContent = 'Disconnected';
+                connectBtn.textContent = 'Connect to Ground Station';
+                resetBtn.disabled = true;
+                sendBtn.disabled = true;
+                commandInput.disabled = true;
+            }
+        }
+
+        function blinkLED(ledId, duration = 100) {
+            // Use radio configuration to determine which LED to blink
+            if (window.radioConfig) {
+                if (ledId === 'rfm95TxLed' && window.radioConfig.uplink === 'rfm69') {
+                    ledId = 'rfm69TxLed';
+                } else if (ledId === 'rfm95RxLed' && window.radioConfig.downlink === 'rfm69') {
+                    ledId = 'rfm69RxLed';
+                } else if (ledId === 'rfm95TxLed' && window.radioConfig.uplink === 'rfm95') {
+                    ledId = 'rfm95TxLed';
+                } else if (ledId === 'rfm95RxLed' && window.radioConfig.downlink === 'rfm95') {
+                    ledId = 'rfm95RxLed';
+                }
+            }
+            
+            const led = document.getElementById(ledId);
+            led.classList.add('active');
+            setTimeout(() => led.classList.remove('active'), duration);
+        }
+
+        // WebSerial connection functions
+        async function toggleConnection() {
+            if (isConnected) {
+                await disconnect();
+            } else {
+                await connect();
+            }
+        }
+
+        async function connect() {
+            try {
+                // Check for WebSerial support
+                if (!('serial' in navigator)) {
+                    logToTerminal('WebSerial is not supported in this browser. Please use Chrome or Edge.', 'error');
+                    return;
+                }
+
+                // Get serial port options
+                const baudRate = parseInt(document.getElementById('baudRate').value);
+                const dataBits = parseInt(document.getElementById('dataBits').value);
+                const stopBits = parseInt(document.getElementById('stopBits').value);
+                const parity = document.getElementById('parity').value;
+                const flowControl = document.getElementById('flowControl').value;
+
+                const options = {
+                    baudRate,
+                    dataBits,
+                    stopBits,
+                    parity,
+                    flowControl
+                };
+
+                // Request port
+                logToTerminal('Requesting serial port...', 'info');
+                port = await navigator.serial.requestPort();
+                await port.open(options);
+                
+                const info = port.getInfo();
+                document.getElementById('portInfo').textContent = 
+                    `VID: ${info.usbVendorId || 'N/A'}, PID: ${info.usbProductId || 'N/A'}`;
+                logToTerminal(`Connected to Ground Station Port`, 'response');
+
+                // Set up writer and reader
+                writer = port.writable.getWriter();
+                
+                // Start reading loop
+                readLoop = readFromPort();
+
+                updateConnectionStatus(true);
+                logToTerminal('Ground Station connected successfully!', 'response');
+
+                // Perform soft reset after a short delay
+                setTimeout(() => softReset(), 500);
+
+            } catch (error) {
+                logToTerminal(`Connection error: ${error.message}`, 'error');
+                updateConnectionStatus(false);
+            }
+        }
+
+        async function disconnect() {
+            try {
+                if (readLoop) {
+                    reader.cancel();
+                    await readLoop;
+                }
+                if (writer) {
+                    await writer.close();
+                    writer = null;
+                }
+                if (port) {
+                    await port.close();
+                    port = null;
+                }
+                
+                updateConnectionStatus(false);
+                logToTerminal('Disconnected from Ground Station', 'info');
+            } catch (error) {
+                logToTerminal(`Disconnect error: ${error.message}`, 'error');
+            }
+        }
+
+        async function readFromPort() {
+            const decoder = new TextDecoder();
+            reader = port.readable.getReader();
+
+            try {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    
+                    if (value && value.length > 0) {
+                        // Process received data
+                        processReceivedData(value);
+                    }
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    logToTerminal(`Read error: ${error.message}`, 'error');
+                }
+            } finally {
+                reader.releaseLock();
+            }
+        }
+
+        let configBuffer = [];
+        let collectingConfig = false;
+
+        function processReceivedData(data) {
+            // Append to buffer
+            const newBuffer = new Uint8Array(dataBuffer.length + data.length);
+            newBuffer.set(dataBuffer);
+            newBuffer.set(data, dataBuffer.length);
+            dataBuffer = newBuffer;
+
+            // Try to decode entire buffer as text first
+            const decoder = new TextDecoder();
+            let fullText = '';
+            try {
+                fullText = decoder.decode(dataBuffer);
+            } catch (e) {
+                // If decode fails, process as binary
+            }
+
+            // Check if buffer contains text data
+            if (fullText.includes('\n') || fullText.includes('RADIO_CONFIG') || fullText.includes('Received command')) {
+                // Process as text data
+                const lines = fullText.split('\n');
+                let consumed = 0;
+                let i = 0;
+                
+                while (i < lines.length) {
+                    const line = lines[i].trim();
+                    
+                    // Check for configuration start
+                    if (line === 'RADIO_CONFIG:') {
+                        collectingConfig = true;
+                        configBuffer = [line];
+                        logToTerminal(line, 'response');
+                        consumed += lines[i].length + 1;
+                        i++;
+                        continue;
+                    }
+                    
+                    // Collect configuration data
+                    if (collectingConfig) {
+                        if (line === 'END_CONFIG' || line === '') {
+                            if (line === 'END_CONFIG') {
+                                // Process the complete configuration
+                                parseRadioConfigFromBuffer(configBuffer);
+                                collectingConfig = false;
+                                configBuffer = [];
+                            }
+                        } else {
+                            configBuffer.push(line);
+                            logToTerminal(line, 'response');
+                        }
+                        consumed += lines[i].length + 1;
+                        i++;
+                        continue;
+                    }
+                    
+                    // Check if this is a text response
+                    if (line.includes('Uplink:') || line.includes('Downlink:') || 
+                        line.includes('Received command:') || line.includes('Ground Station Ready') ||
+                        line.includes('radio configured') || line.includes('RFM95:') || 
+                        line.includes('RFM69:') || line === '') {
+                        
+                        if (line) {
+                            logToTerminal(line, 'response');
+                            blinkLED('rfm95RxLed');
+                        }
+                        consumed += lines[i].length + (i < lines.length - 1 ? 1 : 0);
+                        i++;
+                    } else {
+                        // We hit non-text data, stop processing as text
+                        break;
+                    }
+                }
+                
+                // Remove consumed text from buffer
+                if (consumed > 0) {
+                    dataBuffer = dataBuffer.slice(consumed);
+                }
+            }
+
+            // Process remaining data as binary packets
+            while (dataBuffer.length >= 4) {
+                // Check if we have a valid packet identifier
+                const identifier = new TextDecoder().decode(dataBuffer.slice(0, 4)).replace(/\0/g, '').trim();
+                
+                // Try to process as binary packet
+                const packetSize = getPacketSize(identifier);
+                if (packetSize > 0 && dataBuffer.length >= packetSize) {
+                    const packet = dataBuffer.slice(0, packetSize);
+                    unpackCommand(packet);
+                    dataBuffer = dataBuffer.slice(packetSize);
+                    blinkLED('rfm95RxLed');
+                } else if (packetSize === 0) {
+                    // Unknown packet, skip the identifier
+                    dataBuffer = dataBuffer.slice(4);
+                } else {
+                    // Not enough data yet, wait for more
+                    break;
+                }
+            }
+        }
+
+        function parseRadioConfigFromBuffer(buffer) {
+            // Parse configuration from collected buffer
+            for (let line of buffer) {
+                if (line.startsWith('Uplink:')) {
+                    // Parse: "Uplink: RFM95 @ 915.0 MHz, Channel 255"
+                    const match = line.match(/Uplink: (\w+) @ ([\d.]+) MHz, Channel (\d+)/);
+                    if (match) {
+                        const [, type, freq, channel] = match;
+                        
+                        // Update uplink UI
+                        document.getElementById('uplinkRadio').value = type.toLowerCase();
+                        document.getElementById('uplinkFreq').value = freq;
+                        document.getElementById('uplinkChannel').value = channel;
+                        
+                        // Update band selection based on frequency
+                        const bandValue = freq < 450 ? '433' : freq < 880 ? '868' : '915';
+                        document.getElementById('uplinkBand').value = bandValue;
+                        updateFrequencyRange('uplink');
+                        
+                        logToTerminal('UI updated with uplink configuration', 'info');
+                    }
+                } else if (line.startsWith('Downlink:')) {
+                    // Parse: "Downlink: RFM69 @ 915.0 MHz, Channel 255"
+                    const match = line.match(/Downlink: (\w+) @ ([\d.]+) MHz, Channel (\d+)/);
+                    if (match) {
+                        const [, type, freq, channel] = match;
+                        
+                        // Update downlink UI
+                        document.getElementById('downlinkRadio').value = type.toLowerCase();
+                        document.getElementById('downlinkFreq').value = freq;
+                        document.getElementById('downlinkChannel').value = channel;
+                        
+                        // Update band selection based on frequency
+                        const bandValue = freq < 450 ? '433' : freq < 880 ? '868' : '915';
+                        document.getElementById('downlinkBand').value = bandValue;
+                        updateFrequencyRange('downlink');
+                        
+                        logToTerminal('UI updated with downlink configuration', 'info');
+                    }
+                }
+            }
+        }
+
+        function getPacketSize(identifier) {
+            const packetSizes = {
+                'GYRO': 16, 'ACCL': 16, 'MAGN': 16, 'GRAV': 16, 'EULR': 16,
+                'BMED': 16, 'POLL': -1, // Variable size
+                'OBCR': 8, 'OBCD': 8, 'OBCC': 8,
+                'OBCL': 234, 'OBCP': 234,
+                'ADCS': 32, 'EPSS': 28, 'HOST': 15, 'SOLR': 36,
+                'RETX': -1 // Variable size
+            };
+
+            if (identifier === 'POLL') {
+                if (dataBuffer.length >= 8) {
+                    const view = new DataView(dataBuffer.buffer, dataBuffer.byteOffset, 8);
+                    const payloadLength = view.getUint32(4, true);
+                    return 8 + payloadLength;
+                }
+                return -1;
+            } else if (identifier === 'RETX') {
+                // For RETX, we'll just consume whatever is available
+                return Math.min(dataBuffer.length, 256); // Max 256 bytes
+            }
+
+            return packetSizes[identifier] || 0;
+        }
+
+        async function softReset() {
+            if (!writer) return;
+
+            try {
+                logToTerminal('Performing soft reset...', 'info');
+                
+                // Send CTRL-C then CTRL-D
+                await writer.write(new Uint8Array([0x03])); // CTRL-C
+                await new Promise(resolve => setTimeout(resolve, 100));
+                await writer.write(new Uint8Array([0x04])); // CTRL-D
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                logToTerminal('Ground Station device reset complete', 'response');
+            } catch (error) {
+                logToTerminal(`Reset error: ${error.message}`, 'error');
+            }
+        }
+
+        async function sendCommand(command = null) {
+            if (!writer) return;
+
+            const cmd = command || document.getElementById('commandInput').value.trim();
+            if (!cmd) return;
+
+            try {
+                logToTerminal(`Sending command: ${cmd}`, 'command');
+                blinkLED('rfm95TxLed');
+                
+                const encoder = new TextEncoder();
+                await writer.write(encoder.encode(cmd + '\n'));
+                
+                if (!command) {
+                    document.getElementById('commandInput').value = '';
+                }
+            } catch (error) {
+                logToTerminal(`Send error: ${error.message}`, 'error');
+            }
+        }
+
+
+
+        function sendPresetCommand(command) {
+            document.getElementById('commandInput').value = command;
+            sendCommand(command);
+        }
+
+        // ISM Band frequency ranges
+        const ISM_BANDS = {
+            '433': { min: 433.05, max: 434.79, name: '433 MHz' },
+            '868': { min: 863.0, max: 870.0, name: '868 MHz (EU)' },
+            '915': { min: 902.0, max: 928.0, name: '915 MHz (US)' }
+        };
+
+        function updateFrequencyRange(radio) {
+            const band = document.getElementById(`${radio}Band`).value;
+            const freqInput = document.getElementById(`${radio}Freq`);
+            const rangeDisplay = document.getElementById(`${radio}FreqRange`);
+            const bandInfo = ISM_BANDS[band];
+            
+            // Update input constraints
+            freqInput.min = bandInfo.min;
+            freqInput.max = bandInfo.max;
+            
+            // Update range display
+            rangeDisplay.textContent = `Valid range: ${bandInfo.min} - ${bandInfo.max} MHz`;
+            
+            // Set default frequency for the band
+            const defaultFreqs = {
+                '433': 433.92,
+                '868': 868.0,
+                '915': 915.0
+            };
+            
+            freqInput.value = defaultFreqs[band];
+            
+            // Validate the frequency
+            validateFrequency(radio);
+        }
+
+        function validateFrequency(radio) {
+            const band = document.getElementById(`${radio}Band`).value;
+            const freqInput = document.getElementById(`${radio}Freq`);
+            const freq = parseFloat(freqInput.value);
+            const bandInfo = ISM_BANDS[band];
+            
+            if (freq < bandInfo.min || freq > bandInfo.max) {
+                freqInput.style.borderColor = 'var(--accent-danger)';
+                freqInput.title = `Frequency must be between ${bandInfo.min} and ${bandInfo.max} MHz`;
+                return false;
+            } else {
+                freqInput.style.borderColor = 'var(--border-color)';
+                freqInput.title = '';
+                return true;
+            }
+        }
+
+        async function queryRadioConfig() {
+            if (!writer) {
+                logToTerminal('Not connected to Ground Station', 'error');
+                return;
+            }
+
+            try {
+                logToTerminal('Querying radio configuration...', 'info');
+                
+                // Clear any pending data
+                dataBuffer = new Uint8Array();
+                
+                // Send the query command
+                await sendCommand('get_radio_config');
+                
+                // Wait a bit for the response
+                setTimeout(() => {
+                    if (dataBuffer.length === 0) {
+                        logToTerminal('No response received from hardware. Check connection.', 'warning');
+                    }
+                }, 3000);
+                
+            } catch (error) {
+                logToTerminal(`Query error: ${error.message}`, 'error');
+            }
+        }
+
+        async function configureRadios() {
+            if (!writer) {
+                logToTerminal('Not connected to Ground Station', 'error');
+                return;
+            }
+
+            // Validate frequencies
+            if (!validateFrequency('uplink') || !validateFrequency('downlink')) {
+                logToTerminal('Invalid frequency settings. Please check the frequency ranges.', 'error');
+                return;
+            }
+
+            try {
+                // Get radio configurations
+                const uplinkRadio = document.getElementById('uplinkRadio').value;
+                const uplinkFreq = document.getElementById('uplinkFreq').value;
+                const uplinkChannel = document.getElementById('uplinkChannel').value;
+                const uplinkBand = document.getElementById('uplinkBand').value;
+                
+                const downlinkRadio = document.getElementById('downlinkRadio').value;
+                const downlinkFreq = document.getElementById('downlinkFreq').value;
+                const downlinkChannel = document.getElementById('downlinkChannel').value;
+                const downlinkBand = document.getElementById('downlinkBand').value;
+
+                logToTerminal('Configuring radios...', 'info');
+                
+                // Build uplink command
+                let uplinkCmd = `set_uplink_radio ${uplinkRadio} ${uplinkFreq}`;
+                if (uplinkChannel !== '255') {
+                    uplinkCmd += ` ${uplinkChannel}`;
+                }
+                
+                // Build downlink command  
+                let downlinkCmd = `set_downlink_radio ${downlinkRadio} ${downlinkFreq}`;
+                if (downlinkChannel !== '255') {
+                    downlinkCmd += ` ${downlinkChannel}`;
+                }
+
+                // Send uplink configuration
+                logToTerminal(`Uplink: ${uplinkRadio.toUpperCase()} @ ${uplinkFreq} MHz (${ISM_BANDS[uplinkBand].name}), Channel ${uplinkChannel}`, 'info');
+                await sendCommand(uplinkCmd);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Send downlink configuration
+                logToTerminal(`Downlink: ${downlinkRadio.toUpperCase()} @ ${downlinkFreq} MHz (${ISM_BANDS[downlinkBand].name}), Channel ${downlinkChannel}`, 'info');
+                await sendCommand(downlinkCmd);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                logToTerminal('Radio configuration complete', 'response');
+                
+                // Update LED blink based on selected radios
+                updateLEDConfig(uplinkRadio, downlinkRadio);
+                
+            } catch (error) {
+                logToTerminal(`Radio config error: ${error.message}`, 'error');
+            }
+        }
+
+        function updateLEDConfig(uplinkRadio, downlinkRadio) {
+            // Store the configuration for LED blinking
+            window.radioConfig = {
+                uplink: uplinkRadio,
+                downlink: downlinkRadio
+            };
+        }
+
+        function unpackCommand(data) {
+            if (!data || data.length < 4) return;
+
+            try {
+                // Extract identifier
+                const identifierBytes = data.slice(0, 4);
+                const identifier = new TextDecoder().decode(identifierBytes).replace(/\0/g, '').trim();
+
+                // Handle different packet types
+                switch (identifier) {
+                    case 'GYRO':
+                    case 'ACCL':
+                    case 'MAGN':
+                    case 'GRAV':
+                    case 'EULR':
+                        unpackSensorData(identifier, data);
+                        break;
+                    case 'BMED':
+                        unpackBMEData(data);
+                        break;
+                    case 'POLL':
+                        unpackPollData(data);
+                        break;
+                    case 'OBCR':
+                    case 'OBCD':
+                    case 'OBCC':
+                        unpackOBCSingleValue(identifier, data);
+                        break;
+                    case 'OBCL':
+                        unpackOBCFileListing(data);
+                        break;
+                    case 'OBCP':
+                        unpackOBCProcesses(data);
+                        break;
+                    case 'ADCS':
+                        unpackADCSData(data);
+                        break;
+                    case 'EPSS':
+                        unpackEPSStatus(data);
+                        break;
+                    case 'HOST':
+                        unpackHostname(data);
+                        break;
+                    case 'SOLR':
+                        unpackSolarData(data);
+                        break;
+                    case 'RETX':
+                        unpackRetransmitData(data);
+                        break;
+                    default:
+                        // Don't log unknown identifiers to avoid spam
+                        break;
+                }
+            } catch (error) {
+                logToTerminal(`Unpack error: ${error.message}`, 'error');
+            }
+        }
+
+        function unpackSensorData(identifier, data) {
+            if (data.length < 16) return;
+
+            const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+            const x = view.getFloat32(4, true);
+            const y = view.getFloat32(8, true);
+            const z = view.getFloat32(12, true);
+
+            logToTerminal(`${identifier} - X: ${x.toFixed(3)}, Y: ${y.toFixed(3)}, Z: ${z.toFixed(3)}`, 'response');
+        }
+
+        function unpackBMEData(data) {
+            if (data.length < 16) return;
+
+            const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+            const temp = view.getFloat32(4, true);
+            const pressure = view.getFloat32(8, true);
+            const altitude = view.getFloat32(12, true);
+
+            logToTerminal(`BME - Temp: ${temp.toFixed(2)}°C, Pressure: ${pressure.toFixed(2)}, Altitude: ${altitude.toFixed(2)}`, 'response');
+            
+            // Update telemetry display
+            document.getElementById('temperature').textContent = `${temp.toFixed(1)}°C`;
+        }
+
+        function unpackPollData(data) {
+            if (data.length < 8) return;
+
+            const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+            const payloadLength = view.getUint32(4, true);
+            
+            if (data.length < 8 + payloadLength) return;
+
+            // Append to poll buffer
+            const newBuffer = new Uint8Array(pollBuffer.length + payloadLength);
+            newBuffer.set(pollBuffer);
+            newBuffer.set(data.slice(8, 8 + payloadLength), pollBuffer.length);
+            pollBuffer = newBuffer;
+
+            // Process when we have 16 floats (64 bytes)
+            if (pollBuffer.length >= 64) {
+                const view = new DataView(pollBuffer.buffer, pollBuffer.byteOffset, 64);
+                logToTerminal('Environmental Poll Data:', 'response');
+                for (let i = 0; i < 16; i++) {
+                    const value = view.getFloat32(i * 4, true);
+                    logToTerminal(`  Sensor ${i + 1}: ${value.toFixed(3)}`, 'response');
+                }
+                pollBuffer = new Uint8Array();
+            }
+        }
+
+        function unpackOBCSingleValue(identifier, data) {
+            if (data.length < 8) return;
+
+            const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+            const value = view.getFloat32(4, true);
+
+            const names = {
+                'OBCR': 'RAM Usage',
+                'OBCD': 'Disk Usage',
+                'OBCC': 'CPU Usage'
+            };
+            
+            const name = names[identifier] || identifier;
+            logToTerminal(`Onboard Computer ${name}: ${value.toFixed(2)}%`, 'response');
+
+            // Update telemetry display
+            if (identifier === 'OBCR') {
+                document.getElementById('ramUsage').textContent = `${value.toFixed(0)}%`;
+            } else if (identifier === 'OBCD') {
+                document.getElementById('diskUsage').textContent = `${value.toFixed(0)}%`;
+            }
+        }
+
+        function unpackOBCFileListing(data) {
+            if (data.length < 234) return;
+
+            const fileData = new TextDecoder().decode(data.slice(4, 234)).replace(/\0/g, '').trim();
+            
+            if (fileData && !fileData.startsWith('DNE')) {
+                logToTerminal('Onboard Computer File Listing:', 'response');
+                fileData.split('\n').forEach(line => {
+                    if (line.trim()) {
+                        logToTerminal(`  ${line.trim()}`, 'response');
+                    }
+                });
+            } else {
+                logToTerminal('No files found or directory does not exist', 'response');
+            }
+        }
+
+        function unpackOBCProcesses(data) {
+            if (data.length < 234) return;
+
+            const processData = new TextDecoder().decode(data.slice(4, 234)).replace(/\0/g, '').trim();
+            obclDataArray.push(processData);
+
+            if (processData.includes('END') || processData.length === 0) {
+                const finalData = obclDataArray.join('');
+                const processes = finalData.split(',').filter(p => p.trim());
+                
+                logToTerminal('Final OBC Process List:', 'response');
+                processes.forEach((process, i) => {
+                    logToTerminal(`  ${i + 1}: ${process.trim()}`, 'response');
+                });
+                
+                obclDataArray = [];
+            }
+        }
+
+        function unpackADCSData(data) {
+            if (data.length < 32) return;
+
+            const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+            logToTerminal('Satellite Orientation:', 'response');
+            
+            for (let i = 0; i < 7; i++) {
+                const value = view.getFloat32(4 + i * 4, true);
+                logToTerminal(`  Value ${i + 1}: ${value.toFixed(6)}`, 'response');
+            }
+        }
+
+        function unpackEPSStatus(data) {
+            if (data.length < 28) return;
+
+            const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+            const epsError = view.getInt32(4, true);
+            const ch1State = view.getInt32(8, true);
+            const ch2State = view.getInt32(12, true);
+            const ch3State = view.getInt32(16, true);
+            const ch4State = view.getInt32(20, true);
+            const batteryVoltage = view.getFloat32(24, true);
+
+            logToTerminal('Satellite EPS Status:', 'response');
+            logToTerminal(`  EPS Error: ${epsError}`, 'response');
+            logToTerminal(`  CH1 State: ${ch1State}`, 'response');
+            logToTerminal(`  CH2 State: ${ch2State}`, 'response');
+            logToTerminal(`  CH3 State: ${ch3State}`, 'response');
+            logToTerminal(`  CH4 State: ${ch4State}`, 'response');
+            logToTerminal(`  Battery Voltage: ${batteryVoltage.toFixed(2)}V`, 'response');
+
+            // Update telemetry display
+            document.getElementById('batteryVoltage').textContent = `${batteryVoltage.toFixed(1)}V`;
+        }
+
+        function unpackHostname(data) {
+            if (data.length < 15) return;
+
+            const hostname = new TextDecoder().decode(data.slice(4, 15)).replace(/\0/g, '').trim();
+            logToTerminal(`Satellite Hostname: ${hostname}`, 'response');
+        }
+
+        function unpackSolarData(data) {
+            if (data.length < 36) return;
+
+            const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+            logToTerminal('Solar Panel Values:', 'response');
+            
+            const panels = ['X-', 'X+', 'Y-', 'Y+'];
+            for (let i = 0; i < 4; i++) {
+                const voltage = view.getFloat32(4 + i * 8, true);
+                const current = view.getFloat32(8 + i * 8, true);
+                logToTerminal(`  ${panels[i]}: ${voltage.toFixed(2)}V, ${current.toFixed(2)}mA`, 'response');
+            }
+        }
+
+        function unpackRetransmitData(data) {
+            const retxData = new TextDecoder().decode(data.slice(4)).replace(/\0/g, '').trim();
+            if (retxData) {
+                logToTerminal(`Retransmitted Packet: ${retxData}`, 'response');
+            } else {
+                logToTerminal('Empty retransmit packet', 'response');
+            }
+        }
+
+        function clearTerminal() {
+            document.getElementById('terminal').innerHTML = '';
+            logToTerminal('Terminal cleared', 'info');
+        }
+
+        function showHelp() {
+            const commands = [
+                'Available Commands:',
+                '- GET_SOLAR: Get Solar Panel Voltages and Currents',
+                '- EPS_STATUS: Get All EPS Values',
+                '- EPS CH<n>,<0 or 1>: Set EPS Channel Off/On',
+                '- ENV_POLL: Poll All Environmental Sensors*',
+                '- GET_GYRO: Get Gyroscope Values (X,Y,Z)',
+                '- GET_MAG: Get Magnetometer Values (X,Y,Z)',
+                '- GET_ACCEL: Get Acceleration Values (X, Y, Z)',
+                '- GET_ORIENTATION: Get Satellite Orientation',
+                '- GET_EULER: Get Satellite Orientation in Euler Values',
+                '- GET_QUATERNION: Get Satellite Orientation in Quaternion',
+                '- GET_BME: Get Pressure, Temperature, Humidity, Altitude',
+                '- GET_TEMP: Get Temperature from IMU',
+                '- OBC_LIST_FILES <filepath>: List Files in Given Path*',
+                '- OBC_PROCESSES: List Running Processes on OBC',
+                '- OBC_DISK: Get OBC Disk Usage',
+                '- OBC_RAM: Get OBC RAM Usage',
+                '- OBC_SHUTDOWN: Shut Down OBC',
+                '- OBC_RESTART: Reboot OBC',
+                '- TAKE_PHOTO: Take Photo Using Onboard Camera',
+                '- SEND_IMAGE <path>: Send Image Down to Ground Station*',
+                '- RETRANSMIT <path> <packets>: Retransmit Packets',
+                '- GET_HOSTNAME: Get Hostname of Satellite',
+                '',
+                '* Non-Functioning Commands on RFM69'
+            ];
+            
+            commands.forEach(cmd => logToTerminal(cmd, 'info'));
+        }
+
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('active');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            logToTerminal('WebSerial Ground Station initialized', 'info');
+            logToTerminal('Click "Connect to Ground Station" to begin', 'info');
+            
+            // Initialize radio config
+            window.radioConfig = {
+                uplink: 'rfm95',
+                downlink: 'rfm95'
+            };
+            
+            // Add tooltips for channel info
+            document.getElementById('uplinkChannel').title = 'Channel 0-255. Use 255 for default channel.';
+            document.getElementById('downlinkChannel').title = 'Channel 0-255. Use 255 for default channel.';
+        });
+
+        // Handle page close
+        window.addEventListener('beforeunload', async () => {
+            if (isConnected) {
+                await disconnect();
+            }
+        });
+
+        function initOrientationVisualization() {
+            const container = document.getElementById('orientationCanvas');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // Create scene
+            orientationScene = new THREE.Scene();
+            orientationScene.background = new THREE.Color(0x0a0e27);
+
+            // Create camera
+            orientationCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            orientationCamera.position.set(5, 5, 5);
+            orientationCamera.lookAt(0, 0, 0);
+
+            // Create renderer
+            orientationRenderer = new THREE.WebGLRenderer({ antialias: true });
+            orientationRenderer.setSize(width, height);
+            container.appendChild(orientationRenderer.domElement);
+
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            orientationScene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 5, 5);
+            orientationScene.add(directionalLight);
+
+            // Create satellite model (simplified CubeSat representation)
+            const geometry = new THREE.BoxGeometry(2, 1, 1);
+            
+            // Create materials for each face with labels
+            const materials = [
+                new THREE.MeshPhongMaterial({ color: 0x3b82f6 }), // Right (+X)
+                new THREE.MeshPhongMaterial({ color: 0x3b82f6 }), // Left (-X)
+                new THREE.MeshPhongMaterial({ color: 0x10b981 }), // Top (+Y)
+                new THREE.MeshPhongMaterial({ color: 0x10b981 }), // Bottom (-Y)
+                new THREE.MeshPhongMaterial({ color: 0xef4444 }), // Front (+Z)
+                new THREE.MeshPhongMaterial({ color: 0xef4444 })  // Back (-Z)
+            ];
+
+            satelliteModel = new THREE.Mesh(geometry, materials);
+            orientationScene.add(satelliteModel);
+
+            // Add coordinate axes helper
+            const axesHelper = new THREE.AxesHelper(3);
+            orientationScene.add(axesHelper);
+
+            // Add grid
+            const gridHelper = new THREE.GridHelper(10, 10, 0x374151, 0x1a1f3a);
+            orientationScene.add(gridHelper);
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                const newWidth = container.clientWidth;
+                const newHeight = container.clientHeight;
+                orientationCamera.aspect = newWidth / newHeight;
+                orientationCamera.updateProjectionMatrix();
+                orientationRenderer.setSize(newWidth, newHeight);
+            });
+
+            // Start animation
+            animateOrientation();
+        }
+
+        function animateOrientation() {
+            orientationAnimationId = requestAnimationFrame(animateOrientation);
+            orientationRenderer.render(orientationScene, orientationCamera);
+        }
+
+        function updateSatelliteOrientation(roll, pitch, yaw) {
+            if (!satelliteModel) return;
+
+            // Convert degrees to radians
+            const rollRad = roll * Math.PI / 180;
+            const pitchRad = pitch * Math.PI / 180;
+            const yawRad = yaw * Math.PI / 180;
+
+            // Apply Euler rotation (XYZ order)
+            satelliteModel.rotation.set(rollRad, pitchRad, yawRad);
+
+            // Update display values
+            document.getElementById('rollValue').textContent = `${roll.toFixed(1)}°`;
+            document.getElementById('pitchValue').textContent = `${pitch.toFixed(1)}°`;
+            document.getElementById('yawValue').textContent = `${yaw.toFixed(1)}°`;
+        }
+
+        // Modify the existing unpackADCSData function to update the 3D visualization
+        function unpackADCSData(data) {
+            if (data.length < 32) return;
+
+            const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+            logToTerminal('Satellite Orientation:', 'response');
+            
+            let orientationValues = [];
+            for (let i = 0; i < 7; i++) {
+                const value = view.getFloat32(4 + i * 4, true);
+                orientationValues.push(value);
+                logToTerminal(`  Value ${i + 1}: ${value.toFixed(6)}`, 'response');
+            }
+
+            // Assuming the first 3 values are Euler angles (roll, pitch, yaw) in degrees
+            // or if they're quaternion values, we'll need to convert them
+            // For now, let's assume they're Euler angles
+            if (orientationValues.length >= 3) {
+                const roll = orientationValues[0];
+                const pitch = orientationValues[1];
+                const yaw = orientationValues[2];
+                
+                updateSatelliteOrientation(roll, pitch, yaw);
+            }
+        }
+
+        // Initialize Three.js when the page loads
+        window.addEventListener('load', () => {
+            // ... existing initialization code ...
+            
+            // Initialize 3D orientation visualization
+            setTimeout(() => {
+                initOrientationVisualization();
+            }, 100);
+        });
+
+        // Clean up Three.js on page unload
+        window.addEventListener('beforeunload', async () => {
+            if (orientationAnimationId) {
+                cancelAnimationFrame(orientationAnimationId);
+            }
+            if (orientationRenderer) {
+                orientationRenderer.dispose();
+            }
+            // ... existing cleanup code ...
+        });
+    </script>
+</body>
+</html>
