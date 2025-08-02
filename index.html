@@ -588,7 +588,7 @@
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; padding: 10px; background: var(--bg-tertiary); border-radius: 4px;">
                         <label style="font-size: 12px; color: var(--accent-primary);">🛰️ Satellite Address:</label>
                         <input type="number" class="settings-input" id="satelliteAddress" 
-                               min="0" max="255" value="255" style="padding: 8px;"
+                               min="0" max="255" value="1" style="padding: 8px;"
                                placeholder="0-255 (Destination satellite node)">
                     </div>
                     <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">
@@ -625,7 +625,7 @@
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center;">
                         <label style="font-size: 12px; color: var(--text-secondary);">Ground Node:</label>
                         <input type="number" class="settings-input" id="downlinkNode" 
-                               min="0" max="255" value="255" style="padding: 8px;"
+                               min="0" max="255" value="0" style="padding: 8px;"
                                placeholder="0-255 (Ground station node)">
                     </div>
                 </div>
@@ -729,7 +729,7 @@
                             <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('GET_BME')">Environmental</button>
                             <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('GET_ACCEL')">Accelerometer</button>
                             <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('GET_MAG')">Magnetometer</button>
-                            <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('GET_TEMP')">Tempature</button>
+                            <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('GET_TEMP')">Temperature</button>
                             <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('OBC_DISK')">Disk %</button>
                             <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('OBC_RAM')">RAM %</button>
                             <button class="btn btn-secondary command-preset" onclick="sendPresetCommand('OBC_PROCESSES')">Processes</button>
@@ -935,8 +935,8 @@
                 updateConnectionStatus(true);
                 logToTerminal('Ground Station connected successfully!', 'response');
 
-                // Perform soft reset after a short delay
-                setTimeout(() => softReset(), 500);
+                // Perform soft reset after a short delay - DISABLED FOR DEBUGGING
+                // setTimeout(() => softReset(), 500);
 
             } catch (error) {
                 logToTerminal(`Connection error: ${error.message}`, 'error');
@@ -976,6 +976,9 @@
                     if (done) break;
                     
                     if (value && value.length > 0) {
+                        // Debug: Log raw data received
+                        console.log('Raw data received:', value.length, 'bytes', value);
+                        
                         // Process received data
                         processReceivedData(value);
                     }
@@ -999,94 +1002,105 @@
             newBuffer.set(data, dataBuffer.length);
             dataBuffer = newBuffer;
 
-            // Try to decode entire buffer as text first
-            const decoder = new TextDecoder();
-            let fullText = '';
-            try {
-                fullText = decoder.decode(dataBuffer);
-            } catch (e) {
-                // If decode fails, process as binary
-            }
-
-            // Check if buffer contains text data
-            if (fullText.includes('\n') || fullText.includes('RADIO_CONFIG') || fullText.includes('Received command')) {
-                // Process as text data
-                const lines = fullText.split('\n');
-                let consumed = 0;
-                let i = 0;
-                
-                while (i < lines.length) {
-                    const line = lines[i].trim();
+            // Process data
+            while (dataBuffer.length > 0) {
+                // First check if we have a known binary packet identifier at the start
+                if (dataBuffer.length >= 4) {
+                    const identifier = new TextDecoder().decode(dataBuffer.slice(0, 4)).replace(/\0/g, '').trim();
                     
-                    // Check for configuration start
-                    if (line === 'RADIO_CONFIG:') {
-                        collectingConfig = true;
-                        configBuffer = [line];
-                        logToTerminal(line, 'response');
-                        consumed += lines[i].length + 1;
-                        i++;
-                        continue;
-                    }
+                    // List of known binary packet identifiers
+                    const binaryIdentifiers = ['GYRO', 'ACCL', 'MAGN', 'GRAV', 'EULR', 'BMED', 'POLL', 
+                                             'OBCR', 'OBCD', 'OBCC', 'OBCL', 'OBCP', 'ADCS', 'EPSS', 
+                                             'HOST', 'SOLR', 'RETX'];
                     
-                    // Collect configuration data
-                    if (collectingConfig) {
-                        if (line === 'END_CONFIG' || line === '') {
-                            if (line === 'END_CONFIG') {
-                                // Process the complete configuration
-                                parseRadioConfigFromBuffer(configBuffer);
-                                collectingConfig = false;
-                                configBuffer = [];
-                            }
-                        } else {
-                            configBuffer.push(line);
-                            logToTerminal(line, 'response');
-                        }
-                        consumed += lines[i].length + 1;
-                        i++;
-                        continue;
-                    }
-                    
-                    // Check if this is a text response
-                    if (line.includes('Uplink:') || line.includes('Downlink:') || 
-                        line.includes('Received command:') || line.includes('Ground Station Ready') ||
-                        line.includes('radio configured') || line.includes('RFM95:') || 
-                        line.includes('RFM69:') || line === '') {
+                    if (binaryIdentifiers.includes(identifier)) {
+                        const packetSize = getPacketSize(identifier);
                         
-                        if (line) {
-                            logToTerminal(line, 'response');
+                        if (packetSize > 0 && dataBuffer.length >= packetSize) {
+                            // Process binary packet
+                            const packet = dataBuffer.slice(0, packetSize);
+                            unpackCommand(packet);
+                            dataBuffer = dataBuffer.slice(packetSize);
                             blinkLED('rfm95RxLed');
+                            continue;
+                        } else if (packetSize > 0) {
+                            // Not enough data yet, wait for more
+                            break;
                         }
-                        consumed += lines[i].length + (i < lines.length - 1 ? 1 : 0);
-                        i++;
-                    } else {
-                        // We hit non-text data, stop processing as text
+                    }
+                }
+
+                // Not a binary packet, try to process as text
+                let foundNewline = false;
+                let newlineIndex = -1;
+                
+                // Look for newline
+                for (let i = 0; i < dataBuffer.length; i++) {
+                    if (dataBuffer[i] === 0x0A || dataBuffer[i] === 0x0D) {
+                        foundNewline = true;
+                        newlineIndex = i;
                         break;
                     }
                 }
-                
-                // Remove consumed text from buffer
-                if (consumed > 0) {
-                    dataBuffer = dataBuffer.slice(consumed);
-                }
-            }
 
-            // Process remaining data as binary packets
-            while (dataBuffer.length >= 4) {
-                // Check if we have a valid packet identifier
-                const identifier = new TextDecoder().decode(dataBuffer.slice(0, 4)).replace(/\0/g, '').trim();
-                
-                // Try to process as binary packet
-                const packetSize = getPacketSize(identifier);
-                if (packetSize > 0 && dataBuffer.length >= packetSize) {
-                    const packet = dataBuffer.slice(0, packetSize);
-                    unpackCommand(packet);
-                    dataBuffer = dataBuffer.slice(packetSize);
-                    blinkLED('rfm95RxLed');
-                } else if (packetSize === 0) {
-                    // Unknown packet, skip the identifier
-                    dataBuffer = dataBuffer.slice(4);
+                if (foundNewline) {
+                    // Extract line
+                    const lineBytes = dataBuffer.slice(0, newlineIndex);
+                    let line = '';
+                    
+                    try {
+                        line = new TextDecoder().decode(lineBytes).trim();
+                    } catch (e) {
+                        // Failed to decode as text, skip this line
+                        dataBuffer = dataBuffer.slice(newlineIndex + 1);
+                        continue;
+                    }
+                    
+                    // Process the line
+                    if (line) {
+                        // Handle configuration messages
+                        if (line === 'RADIO_CONFIG:') {
+                            collectingConfig = true;
+                            configBuffer = [line];
+                            logToTerminal(line, 'response');
+                        } else if (collectingConfig) {
+                            if (line === 'END_CONFIG') {
+                                parseRadioConfigFromBuffer(configBuffer);
+                                collectingConfig = false;
+                                configBuffer = [];
+                            } else {
+                                configBuffer.push(line);
+                                logToTerminal(line, 'response');
+                            }
+                        } else if (line.includes('Uplink:') || line.includes('Downlink:') || 
+                                 line.includes('Received command:') || line.includes('Ground Station Ready') ||
+                                 line.includes('radio configured') || line.includes('Error:')) {
+                            // Known text response
+                            logToTerminal(line, 'response');
+                            if (line.includes('Received packet:')) {
+                                blinkLED('rfm95RxLed');
+                            }
+                        } else {
+                            // Unknown line, could be debug output
+                            logToTerminal(line, 'info');
+                        }
+                    }
+                    
+                    // Remove processed line and newline
+                    dataBuffer = dataBuffer.slice(newlineIndex + 1);
+                    
+                    // Skip any additional newlines
+                    while (dataBuffer.length > 0 && (dataBuffer[0] === 0x0A || dataBuffer[0] === 0x0D)) {
+                        dataBuffer = dataBuffer.slice(1);
+                    }
                 } else {
-                    // Not enough data yet, wait for more
+                    // No newline found
+                    // If buffer is getting large with no newlines or binary packets, there might be an issue
+                    if (dataBuffer.length > 1024) {
+                        // Clear buffer to prevent memory issues
+                        console.warn('Data buffer overflow, clearing buffer');
+                        dataBuffer = new Uint8Array();
+                    }
                     break;
                 }
             }
@@ -1170,7 +1184,7 @@
                 await writer.write(new Uint8Array([0x03])); // CTRL-C
                 await new Promise(resolve => setTimeout(resolve, 100));
                 await writer.write(new Uint8Array([0x04])); // CTRL-D
-                await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Increased delay
                 
                 logToTerminal('Ground Station device reset complete', 'response');
             } catch (error) {
