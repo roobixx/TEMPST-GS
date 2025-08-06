@@ -1693,7 +1693,7 @@
             orientationScene.add(directionalLight);
 
             // Create satellite model (simplified CubeSat representation)
-            const geometry = new THREE.BoxGeometry(2, 1, 1);
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
             
             // Create materials for each face with labels
             const materials = [
@@ -1763,8 +1763,8 @@
             };
             
             // Add tooltips for node address info
-            document.getElementById('satelliteAddress').title = 'The node address of the satellite to communicate with (0-255). Default is 1.';
-            document.getElementById('downlinkNode').title = 'Node address for the ground station (0-255). Default is 0.';
+            document.getElementById('satelliteAddress').title = 'The node address of the satellite to communicate with (0-255). Default is 22.';
+            document.getElementById('downlinkNode').title = 'Node address for the ground station (0-255). Default is 255.';
             
             // Initialize 3D orientation visualization
             setTimeout(() => {
